@@ -7,32 +7,48 @@
     <!-- Подключаем Telegram Web Apps API -->
     <script src="https://telegram.org"></script>
 	<script>
-		const tg = window.Telegram.WebApp;
-		tg.ready();
-		tg.expand();
-		
-		function joinEvent(buttonElement) {
-		    const eventItem = buttonElement.closest('.event-item');
-		    
-		    // Вытаскиваем баню и время (убираем лишние пробелы)
-		    const banyaName = eventItem.querySelector('.event-header span:first-child').innerText.trim();
-		    const eventTime = eventItem.querySelector('.event-header span:last-child').innerText.trim();
-		
-		    // Формируем уникальную текстовую строку для бота (без пробелов, заменяем их на подчеркивания)
-		    // Например: "KoptevskieBani_Subbota1800"
-		    const banyaTranslit = banyaName.replace(/\s+/g, '');
-		    const timeTranslit = eventTime.replace(/\s+/g, '').replace(/:/g, '-');
-		    
-		    // ⚠️ ЗАМЕНИТЕ НА ЮЗЕРНЕЙМ ВАШЕГО БОТА (без собачки @)
-		    const botUsername = "Klmntestbot"; 
-		    
-		    // Создаем Deep Link команду формата /start пачка_данных
-		    const deepLink = `https://t.me{botUsername}?start=${banyaTranslit}__${timeTranslit}`;
-		
-		    // Открываем ссылку внутри Telegram. 
-		    // Это мгновенно закроет Mini App и перекинет пользователя в личку с ботом, где будет нажата кнопка "СТАРТ" с нашими параметрами!
-		    tg.openTelegramLink(deepLink);
-		}
+	    const tg = window.Telegram.WebApp;
+	    tg.ready();
+	    tg.expand();
+	
+	    function joinEvent(buttonElement) {
+	        try {
+	            // Находим карточку события
+	            const eventItem = buttonElement.closest('.event-item');
+	            if (!eventItem) return;
+	
+	            // Визуальный отклик: сразу меняем текст кнопки
+	            buttonElement.innerText = "Отправка...";
+	            buttonElement.style.backgroundColor = "#e0e0e0";
+	            buttonElement.disabled = true;
+	
+	            // Вытаскиваем баню и время
+	            const banyaName = eventItem.querySelector('.event-header span:first-child').innerText.trim();
+	            const eventTime = eventItem.querySelector('.event-header span:last-child').innerText.trim();
+	
+	            // Очищаем текст от лишних символов, чтобы Telegram пропустил ссылку
+	            // (Убираем пробелы, скобки, точки и двоеточия)
+	            const banyaClean = banyaName.replace(/[^a-zA-Zа-яА-Я0-0]/g, '');
+	            const timeClean = eventTime.replace(/[^a-zA-Zа-яА-Я0-9]/g, '-');
+	
+	            // ⚠️ ВНИМАНИЕ: Обязательно впишите сюда юзернейм вашего бота БЕЗ знака @
+	            // Например: const botUsername = "MyBanyaBot";
+	            const botUsername = "6915830906"; // Укажите имя вашего бота, а не ID, если это ID!
+	
+	            // Формируем прямую ссылку (Deep Link)
+	            const deepLink = `https://t.me{botUsername}?start=${banyaClean}__${timeClean}`;
+	
+	            // Перенаправляем пользователя в бот
+	            tg.openTelegramLink(deepLink);
+	
+	        } catch (error) {
+	            // Если произошла ошибка, возвращаем кнопку в исходное состояние и выводим ошибку
+	            alert("Ошибка в приложении: " + error.message);
+	            buttonElement.innerText = "Записаться";
+	            buttonElement.style.backgroundColor = "";
+	            buttonElement.disabled = false;
+	        }
+	    }
 	</script>
     <style>
         :root {
