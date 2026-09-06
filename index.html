@@ -7,34 +7,31 @@
     <!-- Подключаем Telegram Web Apps API -->
     <script src="https://telegram.org"></script>
 	<script>
-		// 1. Инициализируем Telegram Web App
 		const tg = window.Telegram.WebApp;
-		tg.ready(); // Сообщаем Telegram, что приложение готово
-		tg.expand(); // Разворачиваем приложение на весь экран
+		tg.ready();
+		tg.expand();
 		
-		// 2. Функция обработки нажатия на кнопку "Записаться"
 		function joinEvent(buttonElement) {
-		    // Находим карточку события, в которой была нажата кнопка
 		    const eventItem = buttonElement.closest('.event-item');
 		    
-		    // Вытаскиваем название бани и дату/время из заголовков
-		    const banyaName = eventItem.querySelector('.event-header span:first-child').innerText;
-		    const eventTime = eventItem.querySelector('.event-header span:last-child').innerText;
+		    // Вытаскиваем баню и время (убираем лишние пробелы)
+		    const banyaName = eventItem.querySelector('.event-header span:first-child').innerText.trim();
+		    const eventTime = eventItem.querySelector('.event-header span:last-child').innerText.trim();
 		
-		    // Формируем JSON-пакет для вашего Python-бота
-		    const dataToSend = {
-		        action: "join_banya",
-		        banya: banyaName,
-		        time: eventTime
-		    };
+		    // Формируем уникальную текстовую строку для бота (без пробелов, заменяем их на подчеркивания)
+		    // Например: "KoptevskieBani_Subbota1800"
+		    const banyaTranslit = banyaName.replace(/\s+/g, '');
+		    const timeTranslit = eventTime.replace(/\s+/g, '').replace(/:/g, '-');
+		    
+		    // ⚠️ ЗАМЕНИТЕ НА ЮЗЕРНЕЙМ ВАШЕГО БОТА (без собачки @)
+		    const botUsername = "Klmntestbot"; 
+		    
+		    // Создаем Deep Link команду формата /start пачка_данных
+		    const deepLink = `https://t.me{botUsername}?start=${banyaTranslit}__${timeTranslit}`;
 		
-		    // Меняем текст кнопки для визуального отклика
-		    buttonElement.innerText = "Отправка...";
-		    buttonElement.style.backgroundColor = "#e0e0e0";
-		    buttonElement.disabled = true;
-		
-		    // 3. Отправляем данные в Бот (Окно Mini App автоматически закроется)
-		    tg.sendData(JSON.stringify(dataToSend));
+		    // Открываем ссылку внутри Telegram. 
+		    // Это мгновенно закроет Mini App и перекинет пользователя в личку с ботом, где будет нажата кнопка "СТАРТ" с нашими параметрами!
+		    tg.openTelegramLink(deepLink);
 		}
 	</script>
     <style>
