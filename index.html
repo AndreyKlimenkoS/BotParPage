@@ -363,44 +363,43 @@
 <!-- 2. Логика приложения -->
 <script>
     function joinEvent(buttonElement) {
-        try {
-            const eventItem = buttonElement.closest('.event-item');
-            if (!eventItem) return;
+    try {
+        const eventItem = buttonElement.closest('.event-item');
+        if (!eventItem) return;
 
-            // Визуальный отклик кнопки
-            buttonElement.innerText = "Отправка...";
-            buttonElement.style.backgroundColor = "#e0e0e0";
-            buttonElement.disabled = true;
+        // Визуальный отклик кнопки
+        buttonElement.innerText = "Отправка...";
+        buttonElement.style.backgroundColor = "#e0e0e0";
+        buttonElement.disabled = true;
 
-            // Вытаскиваем баню и время
-            const banyaName = eventItem.querySelector('.event-header span:first-child').innerText.trim();
-            const eventTime = eventItem.querySelector('.event-header span:last-child').innerText.trim();
+        // Вытаскиваем баню и время
+        const banyaName = eventItem.querySelector('.event-header span:first-child').innerText.trim();
+        const eventTime = eventItem.querySelector('.event-header span:last-child').innerText.trim();
 
-            // Очищаем текст (оставляем только буквы и цифры), чтобы ссылка не сломалась
-            const banyaClean = banyaName.replace(/[^a-zA-Zа-яА-Я0-9]/g, '');
-            const timeClean = eventTime.replace(/[^a-zA-Zа-яА-Я0-9]/g, '-');
+        // Очищаем текст от пробелов и спецсимволов
+        const banyaClean = banyaName.replace(/[^a-zA-Zа-яА-Я0-9]/g, '');
+        const timeClean = eventTime.replace(/[^a-zA-Zа-яА-Я0-9]/g, '-');
 
-            // ⚠️ ВАЖНО: Замените на реальное текстовое имя вашего бота без знака @
-            const botUsername = "Klmntestbot"; 
+        // ⚠️ ВАЖНО: Замените '6915830906' на ТЕКСТОВОЕ ИМЯ вашего бота без знака @
+        // (Посмотрите его в Telegram, например: const botUsername = "MySuperBanyaBot")
+        const botUsername = "Klmntestbot"; 
 
-            // Наша итоговая Deep Link ссылка
-            const deepLink = `https://t.me{botUsername}?start=${banyaClean}__${timeClean}`;
+        // Собираем параметры в одну строку
+        const startParam = banyaClean + "__" + timeClean;
 
-            // Проверяем Telegram «в лоб» без создания промежуточных переменных
-            if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
-                window.Telegram.WebApp.openTelegramLink(deepLink);
-            } else {
-                // Если кэш заблокировал объект Telegram, используем стандартный браузерный переход.
-                // Внутри Telegram это сработает точно так же — закроет Mini App и перекинет в бота!
-                window.location.href = deepLink;
-            }
+        // Строим прямую ссылку
+        const deepLink = "https://t.me" + botUsername + "?start=" + encodeURIComponent(startParam);
 
-        } catch (error) {
-            alert("Ошибка: " + error.message);
-            buttonElement.innerText = "Записаться";
-            buttonElement.style.backgroundColor = "";
-            buttonElement.disabled = false;
-        }
+        // КАРДИНАЛЬНОЕ РЕШЕНИЕ: Вместо методов Telegram используем стандартное окно браузера.
+        // Браузер внутри Telegram поймет ссылку t.me, закроет Mini App и перекинет пользователя в чат.
+        window.location.href = deepLink;
+
+    } catch (error) {
+        alert("Ошибка: " + error.message);
+        buttonElement.innerText = "Записаться";
+        buttonElement.style.backgroundColor = "";
+        buttonElement.disabled = false;
     }
+}
 </script>
 </body>
