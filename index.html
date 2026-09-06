@@ -4,60 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Банный Клуб</title>
-
 	<script src="https://telegram.org"></script>
-	
-	<!-- 2. Логика приложения -->
-	<script>
-	    function joinEvent(buttonElement) {
-	        try {
-	            // Получаем объект Telegram напрямую из окна браузера в момент клика
-	            // Это полностью решает проблему "Cannot access before initialization"
-	            const telegramApp = window.Telegram ? window.Telegram.WebApp : null;
-	            
-	            if (!telegramApp) {
-	                alert("Приложение запущено вне Telegram!");
-	                return;
-	            }
-	
-	            const eventItem = buttonElement.closest('.event-item');
-	            if (!eventItem) return;
-	
-	            // Визуальный отклик кнопки
-	            buttonElement.innerText = "Отправка...";
-	            buttonElement.style.backgroundColor = "#e0e0e0";
-	            buttonElement.disabled = true;
-	
-	            // Вытаскиваем баню и время
-	            const banyaName = eventItem.querySelector('.event-header span:first-child').innerText.trim();
-	            const eventTime = eventItem.querySelector('.event-header span:last-child').innerText.trim();
-	
-	            // Очищаем текст для безопасной передачи в ссылке
-	            const banyaClean = banyaName.replace(/[^a-zA-Zа-яА-Я0-9]/g, '');
-	            const timeClean = eventTime.replace(/[^a-zA-Zа-яА-Я0-9]/g, '-');
-	
-	            // ⚠️ ВАЖНО: Укажите текстовое имя вашего бота без знака @
-	            const botUsername = "Klmntestbot"; 
-	
-	            // Формируем ссылку глубокого связывания
-	            const deepLink = `https://t.me{botUsername}?start=${banyaClean}__${timeClean}`;
-	
-	            // Раскрываем приложение на максимум перед переходом (на всякий случай)
-	            telegramApp.ready();
-	            telegramApp.expand();
-	
-	            // Закрываем Mini App и перенаправляем пользователя в чат с ботом
-	            telegramApp.openTelegramLink(deepLink);
-	
-	        } catch (error) {
-	            alert("Ошибка в функции: " + error.message);
-	            buttonElement.innerText = "Записаться";
-	            buttonElement.style.backgroundColor = "";
-	            buttonElement.disabled = false;
-	        }
-	    }
-	</script>
-
     <style>
         :root {
             --bg-wood: #2c1a04;
@@ -369,7 +316,7 @@
         <!-- ЭКРАН 1: ГЛАВНАЯ / СОБЫТИЯ -->
         <div id="screenEvents" class="screen active">
             <div class="card">
-                <h2>📅 Ближайшие походы_v5</h2>
+                <h2>📅 Ближайшие походы_v7</h2>
                 <div id="eventsList">
                     <div class="event-item">
                         <div class="event-header">
@@ -412,5 +359,55 @@
                 </form>
             </div>
         </div>
+	</div>
+<!-- 2. Логика приложения -->
+<script>
+	function joinEvent(buttonElement) {
+		try {
+			// Получаем объект Telegram напрямую из окна браузера в момент клика
+			// Это полностью решает проблему "Cannot access before initialization"
+			const telegramApp = window.Telegram ? window.Telegram.WebApp : null;
+			
+			if (!telegramApp) {
+				alert("Приложение запущено вне Telegram!");
+				return;
+			}
 
-        <!-- ЭКРАН 3: РЕЙТИНГ -->
+			const eventItem = buttonElement.closest('.event-item');
+			if (!eventItem) return;
+
+			// Визуальный отклик кнопки
+			buttonElement.innerText = "Отправка...";
+			buttonElement.style.backgroundColor = "#e0e0e0";
+			buttonElement.disabled = true;
+
+			// Вытаскиваем баню и время
+			const banyaName = eventItem.querySelector('.event-header span:first-child').innerText.trim();
+			const eventTime = eventItem.querySelector('.event-header span:last-child').innerText.trim();
+
+			// Очищаем текст для безопасной передачи в ссылке
+			const banyaClean = banyaName.replace(/[^a-zA-Zа-яА-Я0-9]/g, '');
+			const timeClean = eventTime.replace(/[^a-zA-Zа-яА-Я0-9]/g, '-');
+
+			// ⚠️ ВАЖНО: Укажите текстовое имя вашего бота без знака @
+			const botUsername = "Klmntestbot"; 
+
+			// Формируем ссылку глубокого связывания
+			const deepLink = `https://t.me{botUsername}?start=${banyaClean}__${timeClean}`;
+
+			// Раскрываем приложение на максимум перед переходом (на всякий случай)
+			telegramApp.ready();
+			telegramApp.expand();
+
+			// Закрываем Mini App и перенаправляем пользователя в чат с ботом
+			telegramApp.openTelegramLink(deepLink);
+
+		} catch (error) {
+			alert("Ошибка в функции: " + error.message);
+			buttonElement.innerText = "Записаться";
+			buttonElement.style.backgroundColor = "";
+			buttonElement.disabled = false;
+		}
+	}
+</script>
+</body>
