@@ -316,7 +316,7 @@
         <!-- ЭКРАН 1: ГЛАВНАЯ / СОБЫТИЯ -->
         <div id="screenEvents" class="screen active">
             <div class="card">
-                <h2>📅 Ближайшие походы_v11</h2>
+                <h2>📅 Ближайшие походы_v12</h2>
                 <div id="eventsList">
                     <div class="event-item">
                         <div class="event-header">
@@ -388,7 +388,7 @@
         const startParam = banyaClean + "__" + timeClean;
 
         // Строим прямую ссылку
-        const deepLink = "https://t.me" + botUsername + "?start=" + encodeURIComponent(startParam);
+        const deepLink = "https://t.me/" + botUsername + "?start=" + encodeURIComponent(startParam);
 
         // КАРДИНАЛЬНОЕ РЕШЕНИЕ: Вместо методов Telegram используем стандартное окно браузера.
         // Браузер внутри Telegram поймет ссылку t.me, закроет Mini App и перекинет пользователя в чат.
