@@ -5,7 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Банный Клуб</title>
     <!-- Подключаем Telegram Web Apps API -->
-    <script src="https://telegram.org"></script>
+    <script src="https://telegram.org">
+		// 1. Инициализируем Telegram Web App
+		const tg = window.Telegram.WebApp;
+		tg.ready(); // Сообщаем Telegram, что приложение готово
+		tg.expand(); // Разворачиваем приложение на весь экран
+		
+		// 2. Функция обработки нажатия на кнопку "Записаться"
+		function joinEvent(buttonElement) {
+		    // Находим карточку события, в которой была нажата кнопка
+		    const eventItem = buttonElement.closest('.event-item');
+		    
+		    // Вытаскиваем название бани и дату/время из заголовков
+		    const banyaName = eventItem.querySelector('.event-header span:first-child').innerText;
+		    const eventTime = eventItem.querySelector('.event-header span:last-child').innerText;
+		
+		    // Формируем JSON-пакет для вашего Python-бота
+		    const dataToSend = {
+		        action: "join_banya",
+		        banya: banyaName,
+		        time: eventTime
+		    };
+		
+		    // Меняем текст кнопки для визуального отклика
+		    buttonElement.innerText = "Отправка...";
+		    buttonElement.style.backgroundColor = "#e0e0e0";
+		    buttonElement.disabled = true;
+		
+		    // 3. Отправляем данные в Бот (Окно Mini App автоматически закроется)
+		    tg.sendData(JSON.stringify(dataToSend));
+		}
+	</script>
     <style>
         :root {
             --bg-wood: #2c1a04;
