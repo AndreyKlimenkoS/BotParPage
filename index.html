@@ -180,6 +180,20 @@ function namesBlock(title, items, waitAfter) {
   return `<div class="ev-list"><h4>${title}</h4>${rows}</div>`;
 }
 
+function distanceCardHtml() {
+  return `
+    <div class="card">
+      <div class="ev-title">📍 Расстояние до бани</div>
+      <div class="ev-meta">Поделись геолокацией браузера — посчитаю и отправлю в чат.</div>
+      <div class="row"><button class="secondary" data-action="distance">Определить расстояние</button></div>
+    </div>`;
+}
+
+function wireDistanceButton() {
+  const distBtn = app.querySelector('[data-action="distance"]');
+  if (distBtn) distBtn.onclick = onDistance;
+}
+
 function renderEvent(data) {
   const isAdmin = !!data.is_admin;
   const ev = data.event;
@@ -199,8 +213,9 @@ function renderEvent(data) {
           <div class="row"><button type="button" data-action="create" ${isAdmin ? "" : "disabled"}>Создать и объявить в чате</button></div>
         </form>
         ${isAdmin ? "" : '<div class="note">Создавать события может только администратор чата.</div>'}
-      </div>`;
+      </div>` + distanceCardHtml();
     app.querySelector('[data-action="create"]').onclick = onCreate;
+    wireDistanceButton();
     return;
   }
 
@@ -220,11 +235,24 @@ function renderEvent(data) {
       <div class="row">
         <button class="secondary" data-action="close" data-status="done">⏹ Стоп (сохранить)</button>
         <button class="danger" data-action="close" data-status="canceled">✕ Отменить</button>
+      </div>
+      <form>
+        <label style="margin-top:14px">Участник без аккаунта (по имени)</label>
+        <input type="text" id="ev-manual-name" placeholder="Имя Фамилия">
+      </form>
+      <div class="row">
+        <button class="secondary" data-action="manual-add">Добавить</button>
+        <button class="secondary" data-action="manual-del">Убрать</button>
       </div>` : ""}
-    </div>`;
+    </div>` + distanceCardHtml();
 
   app.querySelectorAll('[data-action="vote"]').forEach(b => b.onclick = () => onVote(ev.id, b.dataset.choice));
   app.querySelectorAll('[data-action="close"]').forEach(b => b.onclick = () => onClose(ev.id, b.dataset.status));
+  const manualAddBtn = app.querySelector('[data-action="manual-add"]');
+  if (manualAddBtn) manualAddBtn.onclick = () => onManualParticipant(ev.id, "POST");
+  const manualDelBtn = app.querySelector('[data-action="manual-del"]');
+  if (manualDelBtn) manualDelBtn.onclick = () => onManualParticipant(ev.id, "DELETE");
+  wireDistanceButton();
 }
 
 function withBusy(fn, reload) {
@@ -245,6 +273,13 @@ function onClose(eventId, status) {
   confirmDialog(text).then(ok => { if (ok) withBusy(() => apiPost(`/api/events/${eventId}/close`, { status })); });
 }
 
+function onManualParticipant(eventId, method) {
+  const input = document.getElementById("ev-manual-name");
+  const name = input.value.trim();
+  if (!name) { (tg.showAlert || alert)("Введи имя участника"); return; }
+  withBusy(() => apiSend(method, `/api/events/${eventId}/participants`, { name }));
+}
+
 function onCreate() {
   const title = document.getElementById("f-title").value.trim();
   const event_date = document.getElementById("f-date").value || null;
@@ -252,6 +287,27 @@ function onCreate() {
   const limit_n = limitRaw === "" ? null : Number(limitRaw);
   if (!title) { (tg.showAlert || alert)("Опиши, куда и когда собираемся"); return; }
   withBusy(() => apiPost(`/api/chats/${CHAT_ID}/events`, { title, event_date, limit_n }));
+}
+
+function onDistance() {
+  if (!navigator.geolocation) { (tg.showAlert || alert)("Браузер не поддерживает геолокацию."); return; }
+  if (busy) return;
+  busy = true;
+  app.querySelectorAll("button").forEach(b => b.disabled = true);
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      apiPost(`/api/chats/${CHAT_ID}/distance`, { lat: pos.coords.latitude, lon: pos.coords.longitude })
+        .then(r => { (tg.showAlert || alert)(r.text); })
+        .catch(e => (tg.showAlert || alert)(String(e)))
+        .finally(() => { busy = false; loadEvent(); });
+    },
+    err => {
+      busy = false;
+      app.querySelectorAll("button").forEach(b => b.disabled = false);
+      (tg.showAlert || alert)("Не удалось получить геолокацию: " + err.message);
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
 }
 
 // ------------------------------------------------------------------ Настройки
@@ -340,11 +396,21 @@ function renderSettings(membersData, settingsData) {
 
     <div class="card">
       <div class="ev-title">Шапка объявления</div>
-      <div class="ev-meta">Текст перед описанием при создании события (/event и Mini App). Пусто — вернуть текст по умолчанию.</div>
+      <div class="ev-meta">Текст перед описанием при создании события. Пусто — вернуть текст по умолчанию.</div>
       <form${isAdmin ? "" : " data-disabled"}>
         <textarea id="s-header" rows="3" placeholder="Уважаемые любители пара, объявляется общий сбор:" ${dis}>${esc(header)}</textarea>
       </form>
       <div class="row"><button type="button" data-action="save-header" ${dis}>Сохранить шапку</button></div>
+    </div>
+
+    <div class="card">
+      <div class="ev-title">Плашки участников</div>
+      <div class="ev-meta">Массово выставить титул всем админам чата (кроме владельца — Telegram
+        не даёт менять его титул боту). Работает фоново, отчёт придёт сообщением в чат.</div>
+      <div class="row">
+        <button class="secondary" data-action="apply-titles-rating" ${dis}>По рейтингу</button>
+        <button class="secondary" data-action="apply-titles-reset" ${dis}>Сбросить на начальные</button>
+      </div>
     </div>
 
     <div class="card">
@@ -360,11 +426,21 @@ function renderSettings(membersData, settingsData) {
     app.querySelector('[data-action="save-titles"]').onclick = onSaveTitles;
     app.querySelector('[data-action="save-notify"]').onclick = onSaveNotify;
     app.querySelector('[data-action="save-header"]').onclick = onSaveHeader;
+    app.querySelector('[data-action="apply-titles-rating"]').onclick = () => onApplyTitles(true);
+    app.querySelector('[data-action="apply-titles-reset"]').onclick = () => onApplyTitles(false);
     const grantAllBtn = app.querySelector('[data-action="grant-all"]');
     if (grantAllBtn) grantAllBtn.onclick = () => onGrantAll(pending.length);
     app.querySelectorAll('[data-action="grant-one"]').forEach(b => b.onclick = () => onGrantOne(Number(b.dataset.uid)));
     app.querySelectorAll('[data-action="toggle-special"]').forEach(b => b.onclick = () => onToggleSpecial(Number(b.dataset.uid), b.dataset.special === "1"));
   }
+}
+
+function onApplyTitles(byRating) {
+  const msg = byRating
+    ? "Обновить плашки всех админов по текущему рейтингу?"
+    : "Сбросить плашки всех админов на начальные?";
+  confirmDialog(msg + " Результат придёт сообщением в чат.")
+    .then(ok => { if (ok) withBusy(() => apiPost(`/api/chats/${CHAT_ID}/rating/apply-titles`, { by_rating: byRating }), loadSettings); });
 }
 
 function onSaveRating() {
@@ -439,6 +515,7 @@ function renderRating(data) {
   const closed = seasons.filter(s => s.status === "closed").reverse();
 
   let html = data.title ? `<div class="muted" style="margin-bottom:8px">${esc(data.title)}</div>` : "";
+  html += '<div class="row" style="margin-bottom:12px"><button class="secondary" data-action="post-rating">📣 Запостить мой рейтинг в чат</button></div>';
 
   if (!seasons.length) html += '<div class="empty">Пока нет ни одного сезона.</div>';
 
@@ -463,11 +540,22 @@ function renderRating(data) {
   app.innerHTML = html;
   const endBtn = app.querySelector('[data-action="end-season"]');
   if (endBtn) endBtn.onclick = onEndSeason;
+  app.querySelector('[data-action="post-rating"]').onclick = onPostRating;
 }
 
 function onEndSeason() {
   confirmDialog("Завершить активный сезон? Итоги заморозятся, рейтинг обнулится, начнётся новый сезон.")
     .then(ok => { if (ok) withBusy(() => apiPost(`/api/chats/${CHAT_ID}/seasons/close`, {}), loadRating); });
+}
+
+function onPostRating() {
+  if (busy) return;
+  busy = true;
+  app.querySelectorAll("button").forEach(b => b.disabled = true);
+  apiPost(`/api/chats/${CHAT_ID}/rating/post`, {})
+    .then(r => { if (!r.posted) (tg.showAlert || alert)("Ты ещё не участвовал ни в одном завершённом событии — рейтинга пока нет."); })
+    .catch(e => (tg.showAlert || alert)(String(e)))
+    .finally(() => { busy = false; loadRating(); });
 }
 </script>
 </body>
