@@ -263,20 +263,13 @@ function loadSettings() {
     apiGet(`/api/chats/${CHAT_ID}/settings`),
   ]).then(([membersData, settingsData]) => renderSettings(membersData, settingsData))
     .catch(e => {
-      if (e.message === "admin_only") {
-        app.innerHTML = `
-          <div class="card">
-            <div class="ev-title">Настройки</div>
-            <div class="note">Доступно только администраторам чата.</div>
-            <div class="row"><button disabled>Выдать права всем</button></div>
-          </div>`;
-      } else {
-        app.innerHTML = '<div class="err">Не удалось загрузить настройки.<br><span class="sub">' + esc(String(e)) + '</span></div>';
-      }
+      app.innerHTML = '<div class="err">Не удалось загрузить настройки.<br><span class="sub">' + esc(String(e)) + '</span></div>';
     });
 }
 
 function renderSettings(membersData, settingsData) {
+  const isAdmin = !!settingsData.is_admin;
+  const dis = isAdmin ? "" : "disabled";
   const members = membersData.members || [];
   const pending = members.filter(m => !m.is_admin);
   const rating = settingsData.rating || { went: 1, waited: 0, missed: -1, bailed: -2 };
@@ -290,82 +283,88 @@ function renderSettings(membersData, settingsData) {
             ${m.is_admin ? ' <span class="badge">Админ</span>' : ""}
             ${m.is_special ? ' <span class="badge" style="background:#c9a227">★ Особый</span>' : ""}
           </div>
+          ${isAdmin ? `
           ${m.is_admin ? "" : `<button class="secondary" style="flex:0 0 auto;padding:8px 12px" data-action="grant-one" data-uid="${m.tg_user_id}">Выдать</button>`}
           <button class="secondary" style="flex:0 0 auto;padding:8px 12px" data-action="toggle-special" data-uid="${m.tg_user_id}" data-special="${m.is_special ? "1" : "0"}">${m.is_special ? "Снять ★" : "★ Особый"}</button>
+          ` : ""}
         </div>`).join("")
     : '<div class="muted">Бот пока никого не знает в этом чате — участники появляются здесь после первого голоса или ручного добавления.</div>';
 
   app.innerHTML = `
+    ${isAdmin ? "" : '<div class="card"><div class="note" style="margin-top:0">Изменять настройки может только администратор чата — здесь только просмотр.</div></div>'}
+
     <div class="card">
       <div class="ev-title">Баллы рейтинга</div>
       <div class="ev-meta">Начисляются за завершённые события.</div>
-      <form>
+      <form${isAdmin ? "" : " data-disabled"}>
         <label>Сходил (был)</label>
-        <input type="number" id="s-went" value="${rating.went}">
+        <input type="number" id="s-went" value="${rating.went}" ${dis}>
         <label>Ожидание (записался сверх лимита)</label>
-        <input type="number" id="s-waited" value="${rating.waited}">
+        <input type="number" id="s-waited" value="${rating.waited}" ${dis}>
         <label>Не пошёл (проголосовал «не иду»)</label>
-        <input type="number" id="s-missed" value="${rating.missed}">
+        <input type="number" id="s-missed" value="${rating.missed}" ${dis}>
         <label>Слился (записался «иду», потом ушёл в «не иду»)</label>
-        <input type="number" id="s-bailed" value="${rating.bailed}">
+        <input type="number" id="s-bailed" value="${rating.bailed}" ${dis}>
       </form>
-      <div class="row"><button type="button" data-action="save-rating">Сохранить баллы</button></div>
+      <div class="row"><button type="button" data-action="save-rating" ${dis}>Сохранить баллы</button></div>
     </div>
 
     <div class="card">
       <div class="ev-title">Названия плашек рейтинга</div>
       <div class="ev-meta">Титул участника в Telegram — до 16 символов, без эмодзи. У «Особых»
         (★ ниже) — своя плашка вместо расчётной по баллам.</div>
-      <form>
+      <form${isAdmin ? "" : " data-disabled"}>
         <label>Рейтинг больше 0</label>
-        <input type="text" id="s-title-good" maxlength="16" value="${esc(titles.good)}">
+        <input type="text" id="s-title-good" maxlength="16" value="${esc(titles.good)}" ${dis}>
         <label>Рейтинг равен 0</label>
-        <input type="text" id="s-title-zero" maxlength="16" value="${esc(titles.zero)}">
+        <input type="text" id="s-title-zero" maxlength="16" value="${esc(titles.zero)}" ${dis}>
         <label>Рейтинг меньше 0</label>
-        <input type="text" id="s-title-bad" maxlength="16" value="${esc(titles.bad)}">
+        <input type="text" id="s-title-bad" maxlength="16" value="${esc(titles.bad)}" ${dis}>
         <label>Особый статус (★)</label>
-        <input type="text" id="s-title-special" maxlength="16" value="${esc(titles.special)}">
+        <input type="text" id="s-title-special" maxlength="16" value="${esc(titles.special)}" ${dis}>
       </form>
-      <div class="row"><button type="button" data-action="save-titles">Сохранить названия</button></div>
+      <div class="row"><button type="button" data-action="save-titles" ${dis}>Сохранить названия</button></div>
     </div>
 
     <div class="card">
       <div class="ev-title">Уведомления</div>
       <div class="ev-meta">Автосообщения от бота в этот чат (автозавершение события в 22:10 — всегда включено).</div>
       <label style="display:flex;align-items:center;gap:8px;margin-top:10px">
-        <input type="checkbox" id="s-notify-morning" ${settingsData.notify_morning ? "checked" : ""}> Утренняя напоминалка (06:45)
+        <input type="checkbox" id="s-notify-morning" ${settingsData.notify_morning ? "checked" : ""} ${dis}> Утренняя напоминалка (06:45)
       </label>
       <label style="display:flex;align-items:center;gap:8px;margin-top:8px">
-        <input type="checkbox" id="s-notify-steam" ${settingsData.notify_steam ? "checked" : ""}> Анонсы паров (17:50–20:50)
+        <input type="checkbox" id="s-notify-steam" ${settingsData.notify_steam ? "checked" : ""} ${dis}> Анонсы паров (17:50–20:50)
       </label>
-      <div class="row"><button type="button" data-action="save-notify">Сохранить</button></div>
+      <div class="row"><button type="button" data-action="save-notify" ${dis}>Сохранить</button></div>
     </div>
 
     <div class="card">
       <div class="ev-title">Шапка объявления</div>
       <div class="ev-meta">Текст перед описанием при создании события (/event и Mini App). Пусто — вернуть текст по умолчанию.</div>
-      <form>
-        <textarea id="s-header" rows="3" placeholder="Уважаемые любители пара, объявляется общий сбор:">${esc(header)}</textarea>
+      <form${isAdmin ? "" : " data-disabled"}>
+        <textarea id="s-header" rows="3" placeholder="Уважаемые любители пара, объявляется общий сбор:" ${dis}>${esc(header)}</textarea>
       </form>
-      <div class="row"><button type="button" data-action="save-header">Сохранить шапку</button></div>
+      <div class="row"><button type="button" data-action="save-header" ${dis}>Сохранить шапку</button></div>
     </div>
 
     <div class="card">
       <div class="ev-title">Права участников</div>
       <div class="ev-meta">Право «админ» в Telegram — единственный способ, которым бот вообще
         видит участника; без него человек не попадает в авто-список «не идут» при новом событии.</div>
-      <div class="row"><button type="button" data-action="grant-all" ${pending.length ? "" : "disabled"}>Выдать права всем (${pending.length})</button></div>
+      ${isAdmin ? `<div class="row"><button type="button" data-action="grant-all" ${pending.length ? "" : "disabled"}>Выдать права всем (${pending.length})</button></div>` : ""}
       ${memberRows}
     </div>`;
 
-  app.querySelector('[data-action="save-rating"]').onclick = onSaveRating;
-  app.querySelector('[data-action="save-titles"]').onclick = onSaveTitles;
-  app.querySelector('[data-action="save-notify"]').onclick = onSaveNotify;
-  app.querySelector('[data-action="save-header"]').onclick = onSaveHeader;
-  const grantAllBtn = app.querySelector('[data-action="grant-all"]');
-  if (grantAllBtn) grantAllBtn.onclick = () => onGrantAll(pending.length);
-  app.querySelectorAll('[data-action="grant-one"]').forEach(b => b.onclick = () => onGrantOne(Number(b.dataset.uid)));
-  app.querySelectorAll('[data-action="toggle-special"]').forEach(b => b.onclick = () => onToggleSpecial(Number(b.dataset.uid), b.dataset.special === "1"));
+  if (isAdmin) {
+    app.querySelector('[data-action="save-rating"]').onclick = onSaveRating;
+    app.querySelector('[data-action="save-titles"]').onclick = onSaveTitles;
+    app.querySelector('[data-action="save-notify"]').onclick = onSaveNotify;
+    app.querySelector('[data-action="save-header"]').onclick = onSaveHeader;
+    const grantAllBtn = app.querySelector('[data-action="grant-all"]');
+    if (grantAllBtn) grantAllBtn.onclick = () => onGrantAll(pending.length);
+    app.querySelectorAll('[data-action="grant-one"]').forEach(b => b.onclick = () => onGrantOne(Number(b.dataset.uid)));
+    app.querySelectorAll('[data-action="toggle-special"]').forEach(b => b.onclick = () => onToggleSpecial(Number(b.dataset.uid), b.dataset.special === "1"));
+  }
 }
 
 function onSaveRating() {
