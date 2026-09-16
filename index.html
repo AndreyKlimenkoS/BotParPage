@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Рейтинг · Банный клуб</title>
+<title>Банный клуб</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   :root {
@@ -50,6 +50,38 @@
   .sc.neg { color: #d9534f; }
   .empty { color: var(--hint); padding: 10px 2px; }
   .err { color: #d9534f; padding: 16px 2px; }
+
+  /* --- вкладки --- */
+  #tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  #tabs button {
+    flex: 1; padding: 9px; border: 0; border-radius: 10px; font: inherit; font-weight: 600;
+    background: var(--sec); color: var(--text); opacity: .6;
+  }
+  #tabs button.active { background: var(--btn); color: var(--btn-text); opacity: 1; }
+
+  /* --- экран события --- */
+  .ev-title { font-weight: 600; margin-bottom: 4px; }
+  .ev-meta { color: var(--hint); font-size: 13px; margin-bottom: 10px; }
+  .ev-list h4 { margin: 10px 0 4px; font-size: 13px; color: var(--hint); font-weight: 600; }
+  .ev-list div { padding: 2px 0; word-break: break-word; }
+  .ev-list b { color: var(--link); font-weight: 600; }
+  .row { display: flex; gap: 8px; margin-top: 12px; }
+  .row button {
+    flex: 1; padding: 12px; border: 0; border-radius: 12px; font: inherit; font-weight: 600;
+    background: var(--btn); color: var(--btn-text);
+  }
+  .row button.secondary { background: transparent; color: var(--text); border: 1px solid var(--hint); }
+  .row button.danger { background: transparent; color: #d9534f; border: 1px solid #d9534f; }
+  .row button:disabled, form[data-disabled] button:disabled { opacity: .45; }
+
+  form label { display: block; font-size: 13px; color: var(--hint); margin: 10px 0 4px; }
+  form input, form textarea {
+    width: 100%; padding: 10px; border-radius: 10px; border: 1px solid rgba(128,128,128,.35);
+    background: var(--bg); color: var(--text); font: inherit;
+  }
+  form input:disabled, form textarea:disabled { opacity: .5; }
+  .note { color: var(--hint); font-size: 13px; margin-top: 10px; }
+
   #closebar {
     position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
     background: var(--bg); border-top: 1px solid rgba(128,128,128,.18);
@@ -61,6 +93,10 @@
 </style>
 </head>
 <body>
+<div id="tabs">
+  <button data-tab="event" class="tab active">🏕️ Событие</button>
+  <button data-tab="rating" class="tab">🏆 Рейтинг</button>
+</div>
 <div id="app"><div class="muted">Загрузка…</div></div>
 <div id="closebar"><button id="close">Закрыть</button></div>
 
@@ -75,48 +111,178 @@ const app = document.getElementById("app");
 const esc = s => (s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 const crown = r => r === 1 ? "👑" : r === 2 ? "🥈" : r === 3 ? "🥉" : "";
 
+const CHAT_ID = tg.initDataUnsafe && tg.initDataUnsafe.start_param;
+let busy = false; // блокировка повторных тапов, пока идёт запрос
+
+function confirmDialog(text) {
+  return new Promise(resolve => {
+    if (tg.showConfirm) tg.showConfirm(text, resolve);
+    else resolve(window.confirm(text));
+  });
+}
+
+function apiGet(path) {
+  return fetch(API_BASE + path, { headers: { "X-Telegram-Init-Data": tg.initData } })
+    .then(async r => {
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        throw new Error(data.hint || data.error || r.status);
+      }
+      return r.json();
+    });
+}
+function apiPost(path, body) {
+  return fetch(API_BASE + path, {
+    method: "POST",
+    headers: { "X-Telegram-Init-Data": tg.initData, "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  }).then(async r => {
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.message || data.error || r.status);
+    return data;
+  });
+}
+
 if (!tg.initData) {
   app.innerHTML = '<div class="err">Открой приложение из Telegram.</div>';
-} else if (!(tg.initDataUnsafe && tg.initDataUnsafe.start_param)) {
-  app.innerHTML = '<div class="err">Открой кнопкой <b>/app</b> в групповом чате — так приложение узнает, чей рейтинг показать.</div>';
+  document.getElementById("tabs").hidden = true;
+} else if (!CHAT_ID) {
+  app.innerHTML = '<div class="err">Открой кнопкой <b>/app</b> в групповом чате — так приложение узнает, чей рейтинг и событие показать.</div>';
+  document.getElementById("tabs").hidden = true;
 } else {
-  fetch(API_BASE + "/api/overview", { headers: { "X-Telegram-Init-Data": tg.initData } })
-    .then(async r => { if (!r.ok) throw new Error((await r.json().catch(()=>({}))).hint || r.status); return r.json(); })
-    .then(render)
+  document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
+  showTab("event");
+}
+
+function showTab(tab) {
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  if (tab === "event") loadEvent(); else loadRating();
+}
+
+// ------------------------------------------------------------------ Событие
+
+function loadEvent() {
+  app.innerHTML = '<div class="muted">Загрузка…</div>';
+  apiGet(`/api/chats/${CHAT_ID}/event`)
+    .then(renderEvent)
+    .catch(e => { app.innerHTML = '<div class="err">Не удалось загрузить событие.<br><span class="sub">' + esc(String(e)) + '</span></div>'; });
+}
+
+function namesBlock(title, items, waitAfter) {
+  const rows = items.length
+    ? items.map((n, i) => `<div>${i + 1}. ${waitAfter != null && i >= waitAfter ? "<b>Ожидание</b> " : ""}${esc(n)}</div>`).join("")
+    : '<div class="muted">—</div>';
+  return `<div class="ev-list"><h4>${title}</h4>${rows}</div>`;
+}
+
+function renderEvent(data) {
+  const isAdmin = !!data.is_admin;
+  const ev = data.event;
+
+  if (!ev) {
+    app.innerHTML = `
+      <div class="card">
+        <div class="ev-title">Открытых событий нет</div>
+        <div class="ev-meta">${isAdmin ? "Заполни форму и объяви сбор в чате" : "Здесь появится новое событие, как только админ его создаст"}</div>
+        <form id="create-form"${isAdmin ? "" : " data-disabled"}>
+          <label>Дата</label>
+          <input type="date" id="f-date" ${isAdmin ? "" : "disabled"}>
+          <label>Описание</label>
+          <textarea id="f-title" rows="3" placeholder="Собираемся в Коптевских банях..." ${isAdmin ? "" : "disabled"}></textarea>
+          <label>Лимит участников (необязательно)</label>
+          <input type="number" id="f-limit" min="0" placeholder="без лимита" ${isAdmin ? "" : "disabled"}>
+          <div class="row"><button type="button" data-action="create" ${isAdmin ? "" : "disabled"}>Создать и объявить в чате</button></div>
+        </form>
+        ${isAdmin ? "" : '<div class="note">Создавать события может только администратор чата.</div>'}
+      </div>`;
+    app.querySelector('[data-action="create"]').onclick = onCreate;
+    return;
+  }
+
+  const limit = ev.limit_n; // null = без лимита
+  app.innerHTML = `
+    <div class="card">
+      <div class="ev-title">${esc((ev.title || "").split("\n")[0] || "Баня")}</div>
+      <div class="ev-meta">${ev.limit_n != null ? "лимит: " + ev.limit_n : "без лимита"}</div>
+      ${namesBlock("Идут", ev.yes, limit == null ? null : limit)}
+      ${namesBlock("Не идут", ev.no)}
+      ${namesBlock("Слились", ev.leave)}
+      <div class="row">
+        <button data-action="vote" data-choice="yes">✅ Иду</button>
+        <button data-action="vote" data-choice="no">❌ Не иду</button>
+      </div>
+      ${isAdmin ? `
+      <div class="row">
+        <button class="secondary" data-action="close" data-status="done">⏹ Стоп (сохранить)</button>
+        <button class="danger" data-action="close" data-status="canceled">✕ Отменить</button>
+      </div>` : ""}
+    </div>`;
+
+  app.querySelectorAll('[data-action="vote"]').forEach(b => b.onclick = () => onVote(ev.id, b.dataset.choice));
+  app.querySelectorAll('[data-action="close"]').forEach(b => b.onclick = () => onClose(ev.id, b.dataset.status));
+}
+
+function withBusy(fn) {
+  if (busy) return;
+  busy = true;
+  app.querySelectorAll("button").forEach(b => b.disabled = true);
+  Promise.resolve(fn()).catch(e => tg.showAlert ? tg.showAlert(String(e)) : alert(e))
+    .finally(() => { busy = false; loadEvent(); });
+}
+
+function onVote(eventId, choice) {
+  withBusy(() => apiPost(`/api/events/${eventId}/vote`, { choice }));
+}
+
+function onClose(eventId, status) {
+  const text = status === "done" ? "Остановить событие и зафиксировать рейтинг?" : "Отменить событие без сохранения результатов?";
+  confirmDialog(text).then(ok => { if (ok) withBusy(() => apiPost(`/api/events/${eventId}/close`, { status })); });
+}
+
+function onCreate() {
+  const title = document.getElementById("f-title").value.trim();
+  const event_date = document.getElementById("f-date").value || null;
+  const limitRaw = document.getElementById("f-limit").value;
+  const limit_n = limitRaw === "" ? null : Number(limitRaw);
+  if (!title) { (tg.showAlert || alert)("Опиши, куда и когда собираемся"); return; }
+  withBusy(() => apiPost(`/api/chats/${CHAT_ID}/events`, { title, event_date, limit_n }));
+}
+
+// ------------------------------------------------------------------ Рейтинг
+
+function loadRating() {
+  app.innerHTML = '<div class="muted">Загрузка…</div>';
+  apiGet("/api/overview").then(renderRating)
     .catch(e => { app.innerHTML = '<div class="err">Не удалось загрузить рейтинг.<br><span class="sub">' + esc(String(e)) + '</span></div>'; });
 }
 
-function standingsTable(rows, me) {
+function standingsTable(rows) {
   if (!rows.length) return '<div class="empty">Ещё нет завершённых событий.</div>';
   return '<table>' + rows.map(p => {
     const m = crown(p.rank);
     const neg = p.score < 0 ? " neg" : "";
-    const mine = "";
     return '<tr>' +
       '<td class="rk">' + (m ? '<span class="m">' + m + '</span>' : p.rank) + '</td>' +
-      '<td class="nm">' + esc(p.display) + mine +
+      '<td class="nm">' + esc(p.display) +
         '<div class="sub">был ' + p.went + ' · ожидал ' + p.waited + ' · не был ' + p.missed + ' · слился ' + p.bailed + '</div></td>' +
       '<td class="sc' + neg + '">' + p.score + '</td>' +
     '</tr>';
   }).join("") + '</table>';
 }
 
-function render(data) {
-  const me = data.me;
+function renderRating(data) {
   const seasons = data.seasons || [];
   const active = seasons.filter(s => s.status === "active");
-  const closed = seasons.filter(s => s.status === "closed").reverse(); // новые сверху
+  const closed = seasons.filter(s => s.status === "closed").reverse();
 
-  let html = '<h1>🌿 Рейтинг' + (data.title ? " · " + esc(data.title) : "") + '</h1>';
+  let html = data.title ? `<div class="muted" style="margin-bottom:8px">${esc(data.title)}</div>` : "";
 
-  if (!seasons.length) {
-    html += '<div class="empty">Пока нет ни одного сезона.</div>';
-  }
+  if (!seasons.length) html += '<div class="empty">Пока нет ни одного сезона.</div>';
 
   for (const s of active) {
     html += '<div class="card">' +
       '<div class="season-head"><span class="badge">Активен</span> ' + esc(s.name) + '</div>' +
-      standingsTable(s.standings, me) + '</div>';
+      standingsTable(s.standings) + '</div>';
   }
 
   if (closed.length) {
@@ -125,7 +291,7 @@ function render(data) {
       html += '<details class="card">' +
         '<summary class="season-head"><span class="badge closed">Завершён</span> ' + esc(s.name) +
         '<span class="chev">▸</span></summary>' +
-        standingsTable(s.standings, me) + '</details>';
+        standingsTable(s.standings) + '</details>';
     }
   }
 
