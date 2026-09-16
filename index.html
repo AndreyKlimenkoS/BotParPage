@@ -446,7 +446,9 @@ function renderRating(data) {
   for (const s of active) {
     html += '<div class="card">' +
       '<div class="season-head"><span class="badge">Активен</span> ' + esc(s.name) + '</div>' +
-      standingsTable(s.standings) + '</div>';
+      standingsTable(s.standings) +
+      (data.is_admin ? '<div class="row" style="margin-top:12px"><button class="secondary" data-action="end-season">Завершить сезон</button></div>' : '') +
+      '</div>';
   }
 
   if (closed.length) {
@@ -460,6 +462,13 @@ function renderRating(data) {
   }
 
   app.innerHTML = html;
+  const endBtn = app.querySelector('[data-action="end-season"]');
+  if (endBtn) endBtn.onclick = onEndSeason;
+}
+
+function onEndSeason() {
+  confirmDialog("Завершить активный сезон? Итоги заморозятся, рейтинг обнулится, начнётся новый сезон.")
+    .then(ok => { if (ok) withBusy(() => apiPost(`/api/chats/${CHAT_ID}/seasons/close`, {}), loadRating); });
 }
 </script>
 </body>
