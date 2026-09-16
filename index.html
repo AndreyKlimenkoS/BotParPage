@@ -187,7 +187,7 @@ function distanceCardHtml() {
     <div class="card">
       <div class="ev-title">📍 Расстояние до бани</div>
       <div class="ev-meta">Поделись геолокацией браузера — посчитаю и отправлю в чат.</div>
-      <div class="row"><button class="secondary" data-action="distance">Определить расстояние</button></div>
+      <div class="row"><button data-action="distance">Определить расстояние</button></div>
     </div>`;
 }
 
@@ -203,8 +203,8 @@ function donateCardHtml() {
     <div class="card">
       <div class="ev-title">❤️ Поддержать бота</div>
       <div class="ev-meta">Telegram Stars — оплата прямо здесь, без внешних ссылок и карт.</div>
-      <div class="row">${DONATE_AMOUNTS.slice(0, 2).map(a => `<button class="secondary" data-donate="${a}">${a} ⭐</button>`).join("")}</div>
-      <div class="row">${DONATE_AMOUNTS.slice(2).map(a => `<button class="secondary" data-donate="${a}">${a} ⭐</button>`).join("")}</div>
+      <div class="row">${DONATE_AMOUNTS.slice(0, 2).map(a => `<button data-donate="${a}">${a} ⭐</button>`).join("")}</div>
+      <div class="row">${DONATE_AMOUNTS.slice(2).map(a => `<button data-donate="${a}">${a} ⭐</button>`).join("")}</div>
     </div>`;
 }
 
@@ -280,8 +280,8 @@ function renderEvent(data) {
         <input type="text" id="ev-manual-name" placeholder="Имя Фамилия">
       </form>
       <div class="row">
-        <button class="secondary" data-action="manual-add">Добавить</button>
-        <button class="secondary" data-action="manual-del">Убрать</button>
+        <button data-action="manual-add">Добавить</button>
+        <button data-action="manual-del">Убрать</button>
       </div>` : ""}
     </div>` + distanceCardHtml();
 
@@ -379,8 +379,8 @@ function renderSettings(membersData, settingsData) {
             ${m.is_special ? ' <span class="badge" style="background:#c9a227">★ Особый</span>' : ""}
           </div>
           ${isAdmin ? `
-          ${m.is_admin ? "" : `<button class="secondary" style="flex:0 0 auto;padding:8px 12px" data-action="grant-one" data-uid="${m.tg_user_id}">Выдать</button>`}
-          <button class="secondary" style="flex:0 0 auto;padding:8px 12px" data-action="toggle-special" data-uid="${m.tg_user_id}" data-special="${m.is_special ? "1" : "0"}">${m.is_special ? "Снять ★" : "★ Особый"}</button>
+          ${m.is_admin ? "" : `<button style="flex:0 0 auto;padding:8px 12px" data-action="grant-one" data-uid="${m.tg_user_id}">Выдать</button>`}
+          <button style="flex:0 0 auto;padding:8px 12px" data-action="toggle-special" data-uid="${m.tg_user_id}" data-special="${m.is_special ? "1" : "0"}">${m.is_special ? "Снять ★" : "★ Особый"}</button>
           ` : ""}
         </div>`).join("")
     : '<div class="muted">Бот пока никого не знает в этом чате — участники появляются здесь после первого голоса или ручного добавления.</div>';
@@ -441,8 +441,8 @@ function renderSettings(membersData, settingsData) {
         события, на начальные — при завершении сезона. Здесь можно запустить это ещё раз вручную;
         работает фоново, отчёт придёт сообщением в чат.</div>
       <div class="row">
-        <button class="secondary" data-action="apply-titles-rating" ${dis}>По рейтингу</button>
-        <button class="secondary" data-action="apply-titles-reset" ${dis}>Сбросить на начальные</button>
+        <button data-action="apply-titles-rating" ${dis}>По рейтингу</button>
+        <button data-action="apply-titles-reset" ${dis}>Сбросить на начальные</button>
       </div>
     </details>
 
@@ -561,7 +561,7 @@ function renderRating(data) {
   const closed = seasons.filter(s => s.status === "closed").reverse();
 
   let html = data.title ? `<div class="muted" style="margin-bottom:8px">${esc(data.title)}</div>` : "";
-  html += '<div class="row" style="margin-bottom:12px"><button class="secondary" data-action="post-rating">📣 Запостить мой рейтинг в чат</button></div>';
+  html += '<div class="row" style="margin-bottom:12px"><button data-action="post-rating">📣 Запостить мой рейтинг в чат</button></div>';
 
   if (!seasons.length) html += '<div class="empty">Пока нет ни одного сезона.</div>';
 
@@ -569,7 +569,7 @@ function renderRating(data) {
     html += '<details class="card" open>' +
       '<summary class="season-head"><span class="badge">Активен</span> ' + esc(s.name) + '<span class="chev">▸</span></summary>' +
       standingsTable(s.standings) +
-      (data.is_admin ? '<div class="row" style="margin-top:12px"><button class="secondary" data-action="end-season">Завершить сезон</button></div>' : '') +
+      (data.is_admin ? '<div class="row" style="margin-top:12px"><button data-action="end-season">Завершить сезон</button></div>' : '') +
       '</details>';
   }
 
