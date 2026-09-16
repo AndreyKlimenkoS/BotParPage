@@ -97,6 +97,7 @@
   <button data-tab="event" class="tab active">🌿 Событие</button>
   <button data-tab="rating" class="tab">🏆 Рейтинг</button>
   <button data-tab="settings" class="tab">⚙️ Настройки</button>
+  <button data-tab="donate" class="tab">❤️ Донат</button>
 </div>
 <div id="app"><div class="muted">Загрузка…</div></div>
 <div id="closebar"><button id="close">Закрыть</button></div>
@@ -161,6 +162,7 @@ function showTab(tab) {
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
   if (tab === "event") loadEvent();
   else if (tab === "rating") loadRating();
+  else if (tab === "donate") loadDonate();
   else loadSettings();
 }
 
@@ -250,10 +252,9 @@ function renderEvent(data) {
           <div class="row"><button type="button" data-action="create" ${isAdmin ? "" : "disabled"}>Создать и объявить в чате</button></div>
         </form>
         ${isAdmin ? "" : '<div class="note">Создавать события может только администратор чата.</div>'}
-      </div>` + distanceCardHtml() + donateCardHtml();
+      </div>` + distanceCardHtml();
     app.querySelector('[data-action="create"]').onclick = onCreate;
     wireDistanceButton();
-    wireDonateButtons();
     return;
   }
 
@@ -282,7 +283,7 @@ function renderEvent(data) {
         <button class="secondary" data-action="manual-add">Добавить</button>
         <button class="secondary" data-action="manual-del">Убрать</button>
       </div>` : ""}
-    </div>` + distanceCardHtml() + donateCardHtml();
+    </div>` + distanceCardHtml();
 
   app.querySelectorAll('[data-action="vote"]').forEach(b => b.onclick = () => onVote(ev.id, b.dataset.choice));
   app.querySelectorAll('[data-action="close"]').forEach(b => b.onclick = () => onClose(ev.id, b.dataset.status));
@@ -291,7 +292,6 @@ function renderEvent(data) {
   const manualDelBtn = app.querySelector('[data-action="manual-del"]');
   if (manualDelBtn) manualDelBtn.onclick = () => onManualParticipant(ev.id, "DELETE");
   wireDistanceButton();
-  wireDonateButtons();
 }
 
 function withBusy(fn, reload) {
@@ -390,16 +390,20 @@ function renderSettings(membersData, settingsData) {
 
     <details class="card">
       <summary class="season-head">Права участников<span class="chev">▸</span></summary>
-      <div class="ev-meta">Право «админ» в Telegram — единственный способ, которым бот вообще
-        видит участника; без него человек не попадает в авто-список «не идут» при новом событии.
-        Сделай это в чате первым делом.</div>
+      <div class="ev-meta">Чтобы бот мог «видеть» участника чата, у него должны быть права
+        администратора в Telegram — без них Bot API его не показывает. Новым участникам бот
+        выдаёт эти права сам, автоматически. Если бот добавлен в уже существующий чат, тем, кто
+        был в нём раньше, права нужно выдать самостоятельно — в настройках чата Telegram, либо
+        здесь кнопкой ниже; сюда также попадают все, кто хотя бы раз проголосовал.</div>
       ${isAdmin ? `<div class="row"><button type="button" data-action="grant-all" ${pending.length ? "" : "disabled"}>Выдать права всем (${pending.length})</button></div>` : ""}
       ${memberRows}
     </details>
 
     <details class="card">
       <summary class="season-head">Баллы рейтинга<span class="chev">▸</span></summary>
-      <div class="ev-meta">Начисляются за завершённые события.</div>
+      <div class="ev-meta">Задай правила начисления баллов: за «сходил», «не пошёл», «слился»
+        и «ожидал» при завершении события начисляется соответствующее число баллов. Общий
+        рейтинг сезона — сумма баллов за все завершённые события сезона.</div>
       <form${isAdmin ? "" : " data-disabled"}>
         <label>Сходил (был)</label>
         <input type="number" id="s-went" value="${rating.went}" ${dis}>
@@ -433,7 +437,9 @@ function renderSettings(membersData, settingsData) {
     <details class="card">
       <summary class="season-head">Обновить Telegram Title<span class="chev">▸</span></summary>
       <div class="ev-meta">Массово выставить Telegram Title всем админам чата (кроме владельца —
-        Telegram не даёт менять его титул боту). Работает фоново, отчёт придёт сообщением в чат.</div>
+        Telegram не даёт менять его титул боту). Происходит и само: по рейтингу — при завершении
+        события, на начальные — при завершении сезона. Здесь можно запустить это ещё раз вручную;
+        работает фоново, отчёт придёт сообщением в чат.</div>
       <div class="row">
         <button class="secondary" data-action="apply-titles-rating" ${dis}>По рейтингу</button>
         <button class="secondary" data-action="apply-titles-reset" ${dis}>Сбросить на начальные</button>
@@ -459,9 +465,8 @@ function renderSettings(membersData, settingsData) {
         <input type="checkbox" id="s-notify-steam" ${settingsData.notify_steam ? "checked" : ""} ${dis}> Анонсы паров (17:50–20:50)
       </label>
       <div class="row"><button type="button" data-action="save-notify" ${dis}>Сохранить</button></div>
-    </details>` + donateCardHtml();
+    </details>`;
 
-  wireDonateButtons();
   if (isAdmin) {
     app.querySelector('[data-action="save-rating"]').onclick = onSaveRating;
     app.querySelector('[data-action="save-titles"]').onclick = onSaveTitles;
@@ -578,10 +583,16 @@ function renderRating(data) {
     }
   }
 
-  app.innerHTML = html + donateCardHtml();
+  app.innerHTML = html;
   const endBtn = app.querySelector('[data-action="end-season"]');
   if (endBtn) endBtn.onclick = onEndSeason;
   app.querySelector('[data-action="post-rating"]').onclick = onPostRating;
+}
+
+// ------------------------------------------------------------------ Донат
+
+function loadDonate() {
+  app.innerHTML = donateCardHtml();
   wireDonateButtons();
 }
 
