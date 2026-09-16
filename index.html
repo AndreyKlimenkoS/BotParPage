@@ -194,6 +194,43 @@ function wireDistanceButton() {
   if (distBtn) distBtn.onclick = onDistance;
 }
 
+const DONATE_AMOUNTS = [50, 100, 300, 500];
+
+function donateCardHtml() {
+  return `
+    <div class="card">
+      <div class="ev-title">❤️ Поддержать бота</div>
+      <div class="ev-meta">Telegram Stars — оплата прямо здесь, без внешних ссылок и карт.</div>
+      <div class="row">${DONATE_AMOUNTS.slice(0, 2).map(a => `<button class="secondary" data-donate="${a}">${a} ⭐</button>`).join("")}</div>
+      <div class="row">${DONATE_AMOUNTS.slice(2).map(a => `<button class="secondary" data-donate="${a}">${a} ⭐</button>`).join("")}</div>
+    </div>`;
+}
+
+function wireDonateButtons() {
+  app.querySelectorAll('[data-donate]').forEach(b => b.onclick = () => onDonate(Number(b.dataset.donate)));
+}
+
+function onDonate(amount) {
+  if (busy) return;
+  if (!tg.openInvoice) { (tg.showAlert || alert)("Обнови приложение Telegram — эта версия не поддерживает оплату Stars."); return; }
+  busy = true;
+  app.querySelectorAll("button").forEach(b => b.disabled = true);
+  apiPost("/api/donate/invoice-link", { amount })
+    .then(r => {
+      tg.openInvoice(r.link, status => {
+        if (status === "paid") (tg.showAlert || alert)("Спасибо! Звёзды получены 🌟");
+        else if (status === "failed") (tg.showAlert || alert)("Оплата не прошла.");
+        busy = false;
+        app.querySelectorAll("button").forEach(b => b.disabled = false);
+      });
+    })
+    .catch(e => {
+      busy = false;
+      app.querySelectorAll("button").forEach(b => b.disabled = false);
+      (tg.showAlert || alert)(String(e));
+    });
+}
+
 function renderEvent(data) {
   const isAdmin = !!data.is_admin;
   const ev = data.event;
@@ -213,9 +250,10 @@ function renderEvent(data) {
           <div class="row"><button type="button" data-action="create" ${isAdmin ? "" : "disabled"}>Создать и объявить в чате</button></div>
         </form>
         ${isAdmin ? "" : '<div class="note">Создавать события может только администратор чата.</div>'}
-      </div>` + distanceCardHtml();
+      </div>` + distanceCardHtml() + donateCardHtml();
     app.querySelector('[data-action="create"]').onclick = onCreate;
     wireDistanceButton();
+    wireDonateButtons();
     return;
   }
 
@@ -244,7 +282,7 @@ function renderEvent(data) {
         <button class="secondary" data-action="manual-add">Добавить</button>
         <button class="secondary" data-action="manual-del">Убрать</button>
       </div>` : ""}
-    </div>` + distanceCardHtml();
+    </div>` + distanceCardHtml() + donateCardHtml();
 
   app.querySelectorAll('[data-action="vote"]').forEach(b => b.onclick = () => onVote(ev.id, b.dataset.choice));
   app.querySelectorAll('[data-action="close"]').forEach(b => b.onclick = () => onClose(ev.id, b.dataset.status));
@@ -253,6 +291,7 @@ function renderEvent(data) {
   const manualDelBtn = app.querySelector('[data-action="manual-del"]');
   if (manualDelBtn) manualDelBtn.onclick = () => onManualParticipant(ev.id, "DELETE");
   wireDistanceButton();
+  wireDonateButtons();
 }
 
 function withBusy(fn, reload) {
@@ -420,8 +459,9 @@ function renderSettings(membersData, settingsData) {
         <input type="checkbox" id="s-notify-steam" ${settingsData.notify_steam ? "checked" : ""} ${dis}> Анонсы паров (17:50–20:50)
       </label>
       <div class="row"><button type="button" data-action="save-notify" ${dis}>Сохранить</button></div>
-    </details>`;
+    </details>` + donateCardHtml();
 
+  wireDonateButtons();
   if (isAdmin) {
     app.querySelector('[data-action="save-rating"]').onclick = onSaveRating;
     app.querySelector('[data-action="save-titles"]').onclick = onSaveTitles;
@@ -538,10 +578,11 @@ function renderRating(data) {
     }
   }
 
-  app.innerHTML = html;
+  app.innerHTML = html + donateCardHtml();
   const endBtn = app.querySelector('[data-action="end-season"]');
   if (endBtn) endBtn.onclick = onEndSeason;
   app.querySelector('[data-action="post-rating"]').onclick = onPostRating;
+  wireDonateButtons();
 }
 
 function onEndSeason() {
