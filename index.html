@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Банный клуб</title>
+<title>Групповой бот</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   :root {
@@ -167,34 +167,31 @@ if (!tg.initData) {
 function renderIntro() {
   app.innerHTML = `
     <div class="card">
-      <div class="ev-title">🌿 Банный клуб — бот для групповых чатов</div>
-      <div class="ev-meta">Вот что вы увидите здесь, если открыть приложение кнопкой /app из группы вашей бани.</div>
+      <div class="ev-title">🌿 Данный бот — для групповых чатов</div>
+      <div class="ev-meta">Вот что вы увидите здесь, если открыть приложение кнопкой /app из своей группы.</div>
+    </div>
+    <div class="card">
+      <div class="ev-title">Как начать</div>
+      <div class="ev-meta">Добавьте меня в свою группу и дайте права администратора (закреплять сообщения,
+        менять титулы участников). Дальше команда <b>/app</b> в группе откроет приложение с данными вашего чата.</div>
     </div>
     <div class="card">
       <div class="ev-title">🌿 Событие</div>
-      <div class="ev-meta">Создать поход, лимит участников, очередь ожидания, отметиться «Иду» / «Не иду».</div>
+      <div class="ev-meta">Создать сбор, лимит участников, очередь ожидания, отметиться «Иду» / «Не иду».</div>
     </div>
     <div class="card">
       <div class="ev-title">🏆 Рейтинг</div>
-      <div class="ev-meta">Баллы по итогам походов, сезоны, плашки-титулы для админов чата.</div>
+      <div class="ev-meta">Баллы по итогам событий, сезоны, плашки-титулы для админов чата.</div>
     </div>
     <div class="card">
       <div class="ev-title">⏰ Напоминания</div>
-      <div class="ev-meta">Утром в день похода и анонсы паров по расписанию — прямо в чат.</div>
+      <div class="ev-meta">Напоминания и анонсы по расписанию — прямо в чат.</div>
     </div>
     <div class="card">
       <div class="ev-title">⚙️ Настройки</div>
       <div class="ev-meta">Текст объявления, веса рейтинга, названия титулов, уведомления, права участников.</div>
-    </div>
-    <div class="card">
-      <div class="ev-title">❤️ Донат</div>
-      <div class="ev-meta">Поддержать разработку бота через Telegram Stars.</div>
-    </div>
-    <div class="card">
-      <div class="ev-title">Как начать</div>
-      <div class="ev-meta">Добавьте меня в группу вашей бани и дайте права администратора (закреплять сообщения,
-        менять титулы участников). Дальше команда <b>/app</b> в группе откроет приложение с данными вашего чата.</div>
-    </div>`;
+    </div>` + donateCardHtml();
+  wireDonateButtons();
 }
 
 function showTab(tab) {
