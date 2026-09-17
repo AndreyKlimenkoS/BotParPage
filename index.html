@@ -112,6 +112,10 @@ document.getElementById("close").onclick = () => tg.close();
 const app = document.getElementById("app");
 const esc = s => (s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 const crown = r => r === 1 ? "👑" : r === 2 ? "🥈" : r === 3 ? "🥉" : "";
+const fmtDate = iso => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : (iso || "");
+};
 
 const CHAT_ID = tg.initDataUnsafe && tg.initDataUnsafe.start_param;
 let busy = false; // блокировка повторных тапов, пока идёт запрос
@@ -244,7 +248,7 @@ function renderEvent(data) {
         <div class="ev-meta">${isAdmin ? "Заполни форму и объяви сбор в чате" : "Здесь появится новое событие, как только админ его создаст"}</div>
         <form id="create-form"${isAdmin ? "" : " data-disabled"}>
           <label>Дата</label>
-          <input type="date" id="f-date" ${isAdmin ? "" : "disabled"}>
+          <input type="date" id="f-date" required ${isAdmin ? "" : "disabled"}>
           <label>Описание</label>
           <textarea id="f-title" rows="3" placeholder="Собираемся в Коптевских банях..." ${isAdmin ? "" : "disabled"}></textarea>
           <label>Лимит участников (необязательно)</label>
@@ -262,7 +266,7 @@ function renderEvent(data) {
   app.innerHTML = `
     <div class="card">
       <div class="ev-title">${esc((ev.title || "").split("\n")[0] || "Баня")}</div>
-      <div class="ev-meta">${ev.limit_n != null ? "лимит: " + ev.limit_n : "без лимита"}</div>
+      <div class="ev-meta">${ev.event_date ? fmtDate(ev.event_date) + " · " : ""}${ev.limit_n != null ? "лимит: " + ev.limit_n : "без лимита"}</div>
       ${namesBlock("Идут", ev.yes, limit == null ? null : limit)}
       ${namesBlock("Не идут", ev.no)}
       ${namesBlock("Слились", ev.leave)}
@@ -321,9 +325,10 @@ function onManualParticipant(eventId, method) {
 
 function onCreate() {
   const title = document.getElementById("f-title").value.trim();
-  const event_date = document.getElementById("f-date").value || null;
+  const event_date = document.getElementById("f-date").value;
   const limitRaw = document.getElementById("f-limit").value;
   const limit_n = limitRaw === "" ? null : Number(limitRaw);
+  if (!event_date) { (tg.showAlert || alert)("Укажи дату похода"); return; }
   if (!title) { (tg.showAlert || alert)("Опиши, куда и когда собираемся"); return; }
   withBusy(() => apiPost(`/api/chats/${CHAT_ID}/events`, { title, event_date, limit_n }));
 }
