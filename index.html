@@ -120,6 +120,12 @@ const fmtDate = iso => {
 const CHAT_ID = tg.initDataUnsafe && tg.initDataUnsafe.start_param;
 let busy = false; // блокировка повторных тапов, пока идёт запрос
 
+// До этой строки — иначе TDZ: renderIntro() (личка) зовёт donateCardHtml() ещё до
+// исполнения `if`-гейта ниже, а он раньше объявлялся ближе к концу файла (ReferenceError,
+// "Загрузка…" так и оставалась — в группе не ловилось: там donateCardHtml() вызывается
+// позже, по клику на вкладку, когда скрипт уже весь отработал).
+const DONATE_AMOUNTS = [50, 100, 300, 500];
+
 function confirmDialog(text) {
   return new Promise(resolve => {
     if (tg.showConfirm) tg.showConfirm(text, resolve);
@@ -231,8 +237,6 @@ function wireDistanceButton() {
   const distBtn = app.querySelector('[data-action="distance"]');
   if (distBtn) distBtn.onclick = onDistance;
 }
-
-const DONATE_AMOUNTS = [50, 100, 300, 500];
 
 function donateCardHtml() {
   return `
