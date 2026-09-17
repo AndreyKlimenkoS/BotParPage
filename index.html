@@ -155,11 +155,46 @@ if (!tg.initData) {
   app.innerHTML = '<div class="err">Открой приложение из Telegram.</div>';
   document.getElementById("tabs").hidden = true;
 } else if (!CHAT_ID) {
-  app.innerHTML = '<div class="err">Открой кнопкой <b>/app</b> в групповом чате — так приложение узнает, чей рейтинг и событие показать.</div>';
+  // Личный чат с ботом — нет group chat_id, показать чьи-то данные нечем (Mini App per-chat).
+  // Вместо ошибки — ознакомительный экран: что умеет бот, без обращений к API.
+  renderIntro();
   document.getElementById("tabs").hidden = true;
 } else {
   document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
   showTab("event");
+}
+
+function renderIntro() {
+  app.innerHTML = `
+    <div class="card">
+      <div class="ev-title">🌿 Банный клуб — бот для групповых чатов</div>
+      <div class="ev-meta">Вот что вы увидите здесь, если открыть приложение кнопкой /app из группы вашей бани.</div>
+    </div>
+    <div class="card">
+      <div class="ev-title">🌿 Событие</div>
+      <div class="ev-meta">Создать поход, лимит участников, очередь ожидания, отметиться «Иду» / «Не иду».</div>
+    </div>
+    <div class="card">
+      <div class="ev-title">🏆 Рейтинг</div>
+      <div class="ev-meta">Баллы по итогам походов, сезоны, плашки-титулы для админов чата.</div>
+    </div>
+    <div class="card">
+      <div class="ev-title">⏰ Напоминания</div>
+      <div class="ev-meta">Утром в день похода и анонсы паров по расписанию — прямо в чат.</div>
+    </div>
+    <div class="card">
+      <div class="ev-title">⚙️ Настройки</div>
+      <div class="ev-meta">Текст объявления, веса рейтинга, названия титулов, уведомления, права участников.</div>
+    </div>
+    <div class="card">
+      <div class="ev-title">❤️ Донат</div>
+      <div class="ev-meta">Поддержать разработку бота через Telegram Stars.</div>
+    </div>
+    <div class="card">
+      <div class="ev-title">Как начать</div>
+      <div class="ev-meta">Добавьте меня в группу вашей бани и дайте права администратора (закреплять сообщения,
+        менять титулы участников). Дальше команда <b>/app</b> в группе откроет приложение с данными вашего чата.</div>
+    </div>`;
 }
 
 function showTab(tab) {
